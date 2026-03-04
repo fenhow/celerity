@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Global Experience — Celerity Energy Advisors</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: #232428;
+  }
+
+  #map {
+    width: 100%;
+    height: 100vh;
+  }
+
+  .leaflet-control-zoom { display: none !important; }
+  .leaflet-control-attribution {
+    background: rgba(20,22,25,0.6) !important;
+    color: #444 !important;
+    font-size: 9px !important;
+  }
+  .leaflet-control-attribution a { color: #4ab3c8 !important; }
+  .leaflet-interactive { cursor: default !important; }
+
+  /* ── Pulsing dot ── */
+  .pulse-dot {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    cursor: pointer !important;
+  }
+
+  .pulse-dot .core {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 10px;
+    background: #4ab3c8;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.5);
+    z-index: 2;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+
+  .pulse-dot:hover .core {
+    transform: translate(-50%, -50%) scale(1.4);
+    background: #6dcfdf;
+  }
+
+  .pulse-dot .ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid #4ab3c8;
+    opacity: 0;
+    animation: ripple 2.4s ease-out infinite;
+  }
+
+  .pulse-dot .ring:nth-child(1) { animation-delay: 0s; }
+  .pulse-dot .ring:nth-child(2) { animation-delay: 0.8s; }
+  .pulse-dot .ring:nth-child(3) { animation-delay: 1.6s; }
+
+  @keyframes ripple {
+    0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.7; }
+    100% { transform: translate(-50%, -50%) scale(4.5); opacity: 0; }
+  }
+
+  /* ── Custom tooltip ── */
+  .leaflet-tooltip.loc-tip {
+    background: rgba(22, 24, 28, 0.96);
+    border: 1px solid rgba(74, 179, 200, 0.4);
+    border-radius: 8px;
+    padding: 10px 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    color: #fff;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .leaflet-tooltip.loc-tip::before {
+    border-top-color: rgba(74, 179, 200, 0.4) !important;
+  }
+
+  .tip-year {
+    font-size: 11px;
+    font-weight: 600;
+    color: #4ab3c8;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+
+  .tip-basin {
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 3px;
+    max-width: 260px;
+    white-space: normal;
+    line-height: 1.35;
+  }
+
+  .tip-country {
+    font-size: 11px;
+    font-weight: 300;
+    color: #9ca3a8;
+  }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('map', {
+  center: [18, 8],
+  zoom: 2,
+  zoomControl: false,
+  scrollWheelZoom: false,
+  doubleClickZoom: false,
+  dragging: false,
+  touchZoom: false,
+  keyboard: false,
+  boxZoom: false,
+  tap: false,
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 19,
+}).addTo(map);
+
+const pulseIcon = L.divIcon({
+  html: `<div class="pulse-dot">
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="core"></div>
+  </div>`,
+  className: '',
+  iconSize: [12, 12],
+  iconAnchor: [6, 6],
+});
+
+function tip(year, basin, country) {
+  return `<div class="tip-year">${year}</div>
+          <div class="tip-basin">${basin}</div>
+          <div class="tip-country">${country}</div>`;
+}
+
+const locations = [
+  {
+    latlng: [56.5, 3.0],
+    year: '1987',
+    basin: 'North Sea — Central Graben',
+    country: 'UK, Denmark, Norway'
+  },
+  {
+    latlng: [10.5, -61.5],
+    year: '1987–1992',
+    basin: 'Columbus Basin',
+    country: 'Trinidad'
+  },
+  {
+    latlng: [-24.0, 122.0],
+    year: 'Late 1980s',
+    basin: 'Canning, NW Shelf & Bass Strait Basins',
+    country: 'Australia'
+  },
+  {
+    latlng: [-45.8, -67.5],
+    year: 'Late 1980s',
+    basin: 'Golfo San Jorge',
+    country: 'Argentina'
+  },
+  {
+    latlng: [7.0, -74.5],
+    year: 'Late 1980s',
+    basin: 'Middle & Upper Magdalena Basin',
+    country: 'Colombia'
+  },
+  {
+    latlng: [31.2, 30.5],
+    year: 'Late 1980s / 2010–2015',
+    basin: 'Nile Delta',
+    country: 'Egypt'
+  },
+  {
+    latlng: [-39.5, 173.8],
+    year: 'Late 1980s',
+    basin: 'East Coast & Taranaki Basins',
+    country: 'New Zealand'
+  },
+  {
+    latlng: [4.5, 108.0],
+    year: '1992–1994',
+    basin: 'Malay & NW Java Sea Basins',
+    country: 'Malaysia, Indonesia, Thailand'
+  },
+  {
+    latlng: [26.0, -90.0],
+    year: '1997–2020',
+    basin: 'Gulf of Mexico — Mad Dog, So. Green Canyon, Atlantis & Thunder Horse',
+    country: 'USA'
+  },
+  {
+    latlng: [52.0, -114.5],
+    year: '2007–2009',
+    basin: 'Alberta Basin',
+    country: 'Canada'
+  },
+  {
+    latlng: [70.2, -148.5],
+    year: '2007–2009',
+    basin: 'North Slope',
+    country: 'Alaska, USA'
+  },
+  {
+    latlng: [-22.0, -40.5],
+    year: '2007–2009 / 2010–2015',
+    basin: 'Campos Basin',
+    country: 'Brazil'
+  },
+  {
+    latlng: [-24.5, -43.5],
+    year: '2007–2009 / 2010–2015',
+    basin: 'Santos Basin',
+    country: 'Brazil'
+  },
+  {
+    latlng: [40.4, 50.0],
+    year: '2010–2015',
+    basin: 'South Caspian Basin',
+    country: 'Azerbaijan'
+  },
+  {
+    latlng: [-10.0, 11.5],
+    year: '2010–2015',
+    basin: 'Angola Offshore',
+    country: 'Angola'
+  },
+  {
+    latlng: [17.0, 82.0],
+    year: '2010–2015',
+    basin: 'Krishna-Godavari Basin',
+    country: 'India'
+  },
+  {
+    latlng: [47.5, -103.0],
+    year: '2021–2024',
+    basin: 'Williston Basin',
+    country: 'USA'
+  },
+  {
+    latlng: [40.5, -104.0],
+    year: '2021–2024',
+    basin: 'Denver-Julesburg Basin',
+    country: 'USA'
+  },
+  {
+    latlng: [36.5, -119.5],
+    year: '2022',
+    basin: 'San Joaquin Basin',
+    country: 'California, USA'
+  },
+  {
+    latlng: [24.0, -89.0],
+    year: '2023',
+    basin: 'DW Paleogene',
+    country: 'Gulf of Mexico, USA'
+  },
+];
+
+locations.forEach(loc => {
+  const marker = L.marker(loc.latlng, { icon: pulseIcon, interactive: true }).addTo(map);
+  marker.bindTooltip(tip(loc.year, loc.basin, loc.country), {
+    className: 'loc-tip',
+    direction: 'top',
+    offset: [0, -8],
+    opacity: 1,
+  });
+});
+</script>
+</body>
+</html>
