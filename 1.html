@@ -167,7 +167,12 @@ const map = L.map('map', {
 });
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}.png?key=cb1_3iwg_1_f187614f1aeeb82ca6fe229a', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 19,
+}).addTo(map);
 
+ 
 const pulseIcon = L.divIcon({
   html: `<div class="pulse-dot">
     <div class="ring"></div><div class="ring"></div><div class="ring"></div>
